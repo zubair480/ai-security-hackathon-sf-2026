@@ -221,13 +221,13 @@ kbd { font: 500 11px/14px var(--mono); color: var(--text-3); border: 1px solid v
 .decision-head { display: flex; justify-content: space-between; align-items: center; min-height: 28px; gap: 12px; }
 .decision-what { font-family: var(--mono); font-size: 12px; }
 .checks { list-style: none; padding: 0; margin: 2px 0 4px; }
-.check { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; min-height: 24px; }
+.check { display: grid; grid-template-columns: 12px minmax(0, 1fr) minmax(0, 55%); gap: 0 8px; align-items: baseline; min-height: 24px; padding: 2px 0; }
 .check .g { font: 500 12px var(--mono); color: var(--ok); }
 .check.fail .g { color: var(--danger); }
-.check.fail .n { color: var(--danger); }
-.check .n { color: var(--text-2); }
-.check .r { font-family: var(--mono); font-size: 12px; color: var(--text-3); text-align: right; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.check.fail .r { color: var(--text-2); }
+.check.fail .n { color: var(--danger); font-weight: 500; }
+.check .n { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.check .r { font-family: var(--mono); font-size: 12px; color: var(--text-3); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.check.fail .r { grid-column: 2 / 4; text-align: left; white-space: normal; color: var(--text-2); line-height: 16px; padding-bottom: 2px; }
 .decision-summary { font-size: 12px; color: var(--text-2); padding-bottom: 4px; }
 .decision-summary.BLOCKED { color: var(--danger); }
 .decision-summary.EXECUTED { color: var(--ok); }
