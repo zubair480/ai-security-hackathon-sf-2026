@@ -296,7 +296,10 @@ function renderLedger() {
   const L=state.ledger; if (!L) return;
   const blocked=L.decisions.filter(d => d.status === "BLOCKED" && d.proposal.type === "PAY");
   const pending=L.pendingChanges.filter(c => c.status === "pending");
-  setRoll("#m-stopped",money(blocked.reduce((s,d) => s+Number(d.proposal.amount||0),0)));
+  // Value at risk is counted once per invoice, however many times the same diversion is replayed.
+  const atRisk=new Map();
+  for (const d of blocked) { const k=d.proposal.invoiceId || d.id; atRisk.set(k, Math.max(atRisk.get(k) || 0, Number(d.proposal.amount || 0))); }
+  setRoll("#m-stopped",money([...atRisk.values()].reduce((s,v) => s+v,0)));
   setRoll("#m-paid",money(L.payments.reduce((s,p) => s+p.amount,0)));
   setRoll("#m-held",String(pending.length));
   $("#stopped-caption").textContent=blocked.length ? blocked.length + " blocked payment attempt" + (blocked.length===1 ? "" : "s") : "No blocked payment attempts";

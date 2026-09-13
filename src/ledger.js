@@ -75,6 +75,18 @@ export class Ledger {
       check("bank details present", !!(proposal.bank?.routing && proposal.bank?.account), fmtBank(proposal.bank));
       check("sender on vendor contact list", vendor.contacts.includes(proposal.source?.from), `${proposal.source?.from} vs ${vendor.contacts.join(", ")}`);
       check("email content may change approved payee", false, "Never. Payee changes require out-of-band verification by a human approver.");
+      if (sameBank(proposal.bank, vendor.bank)) {
+        decision.status = "NO_ACTION";
+        decision.summary = `${vendor.name} is already approved for ${fmtBank(vendor.bank)} (${vendor.bankVerifiedVia}). Nothing to change.`;
+        return this.record(decision);
+      }
+      const existing = this.pendingChanges.find((c) => c.vendorId === vendor.id && c.status === "pending" && sameBank(c.proposedBank, proposal.bank));
+      if (existing) {
+        decision.status = "PENDING_APPROVAL";
+        decision.changeId = existing.id;
+        decision.summary = `Bank change for ${vendor.name} is already parked as ${existing.id} awaiting callback. Duplicate request not filed again.`;
+        return this.record(decision);
+      }
       const change = {
         id: nextId("CHG"),
         vendorId: vendor.id,
@@ -95,7 +107,13 @@ export class Ledger {
     if (proposal.type === "PAY") {
       const invoice = this.invoice(proposal.invoiceId);
       if (!check("invoice exists and is open", !!invoice && invoice.status === "open", invoice ? `${invoice.id} is ${invoice.status}` : `no invoice ${proposal.invoiceId}`)) {
-        decision.summary = `Payment rejected: ${invoice ? "invoice already " + invoice.status : "unknown invoice " + proposal.invoiceId}.`;
+        if (invoice?.status === "paid") {
+          const prior = this.payments.find((p) => p.id === invoice.paymentId);
+          decision.status = "NO_ACTION";
+          decision.summary = `Already paid: ${prior?.id ?? "an earlier payment"} settled ${invoice.id} for $${invoice.amount.toFixed(2)} this session. Duplicate request ignored; nothing moved.`;
+        } else {
+          decision.summary = `Payment rejected: unknown invoice ${proposal.invoiceId}.`;
+        }
         return this.record(decision);
       }
       const vendor = this.vendor(invoice.vendorId);

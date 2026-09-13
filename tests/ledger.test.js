@@ -56,14 +56,32 @@ test("PAY with the wrong amount is BLOCKED", () => {
   assert.equal(ledger.payments.length, 0);
 });
 
-test("second PAY for an already-paid invoice is BLOCKED", () => {
+test("second PAY for an already-paid invoice is NO_ACTION and moves nothing", () => {
   const ledger = fresh();
   assert.equal(ledger.evaluate(pay()).status, "EXECUTED");
   const d = ledger.evaluate(pay());
-  assert.equal(d.status, "BLOCKED");
+  assert.equal(d.status, "NO_ACTION");
   assert.deepEqual(failing(d), ["invoice exists and is open"]);
   assert.equal(ledger.payments.length, 1);
-  assert.match(d.summary, /already paid/);
+  assert.match(d.summary, /already paid/i);
+});
+
+test("replaying the same CHANGE_BANK reuses the pending change instead of filing another", () => {
+  const ledger = fresh();
+  const bank = { routing: "322271627", account: "9930-4471" };
+  const first = ledger.evaluate({ type: "CHANGE_BANK", vendorName: NW.name, bank, source: { from: "zubair480@agentmail.to", messageId: "m1" } });
+  const second = ledger.evaluate({ type: "CHANGE_BANK", vendorName: NW.name, bank, source: { from: "zubair480@agentmail.to", messageId: "m2" } });
+  assert.equal(first.status, "PENDING_APPROVAL");
+  assert.equal(second.status, "PENDING_APPROVAL");
+  assert.equal(second.changeId, first.changeId);
+  assert.equal(ledger.pendingChanges.length, 1);
+});
+
+test("CHANGE_BANK to the account already on file is NO_ACTION", () => {
+  const ledger = fresh();
+  const d = ledger.evaluate({ type: "CHANGE_BANK", vendorName: NW.name, bank: { ...NW.bank }, source: { from: NW.contacts[0], messageId: "m3" } });
+  assert.equal(d.status, "NO_ACTION");
+  assert.equal(ledger.pendingChanges.length, 0);
 });
 
 test("CHANGE_BANK never mutates vendor.bank and parks a pending change as PENDING_APPROVAL", () => {
