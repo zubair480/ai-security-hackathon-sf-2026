@@ -35,12 +35,17 @@ function emit(type, data) {
   console.log(`[${type}] ${brief}`);
 }
 
-function handleInbound(email, { reply = true } = {}) {
+let currentCaseId = null; // case being processed, so attacker-endpoint hits can be attributed
+
+function handleInbound(email, { reply = true, unsafe = false } = {}) {
   if (processed.has(email.messageId)) return;
   processed.add(email.messageId);
   queue = queue
     .then(async () => {
-      const { decisions } = await processEmail(email, { ledger, emit });
+      currentCaseId = email.messageId;
+      const { decisions } = await processEmail(email, { ledger, emit, unsafe }).finally(() => {
+        currentCaseId = null;
+      });
       if (reply && decisions.length && !email.messageId.startsWith("offline-")) {
         const text = composeReply(decisions);
         const sent = await replyTo(email, text);
@@ -81,15 +86,28 @@ app.post("/api/scenario/:name/send", async (req, res) => {
   }
 });
 
-// Process a scenario offline (no email round trip).
+// Process a scenario offline (no email round trip). Body { sandbox: "off" } runs the comparison
+// with the Wasmer boundary removed (network open, payee file mounted).
 app.post("/api/scenario/:name/run", async (req, res) => {
   try {
+    const unsafe = req.body?.sandbox === "off";
     const email = scenarioAsEmail(req.params.name);
-    await handleInbound(email, { reply: false });
-    res.json({ ok: true });
+    if (unsafe) email.messageId = email.messageId.replace("offline-", "offline-unsafe-");
+    await handleInbound(email, { reply: false, unsafe });
+    res.json({ ok: true, unsafe });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
+});
+
+// The attacker's collection endpoint. Anything that reaches it did so because no boundary stopped it.
+app.all("/attacker/:what", express.raw({ type: () => true, limit: "2mb" }), (req, res) => {
+  const bytes = Buffer.isBuffer(req.body) ? req.body.length : 0;
+  const preview = bytes ? req.body.toString("utf8", 0, Math.min(bytes, 400)) : "";
+  const hit = { messageId: currentCaseId, path: `/attacker/${req.params.what}`, method: req.method, query: req.query, bytes, preview, at: new Date().toISOString() };
+  emit("attacker.received", hit);
+  console.log(`[attacker] ${req.method} ${hit.path} ${bytes} bytes (case ${currentCaseId ?? "unknown"})`);
+  res.json({ ok: true });
 });
 
 app.post("/api/changes/:id/approve", (req, res) => {

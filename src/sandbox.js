@@ -20,12 +20,13 @@ export const SANDBOX_POLICY = {
  * Run a generated Python extractor against the email and invoice text.
  * Returns stdout/stderr, the parsed JSON extraction (last JSON line of stdout), and any denied capabilities.
  */
-export async function runExtractor({ code, emailText, invoiceText = "" }) {
-  const files = { "work/extract.py": code, "data/email.txt": emailText, "data/invoice.txt": invoiceText };
+export async function runExtractor({ code, emailText, invoiceText = "", unsafe = false, extraFiles = {} }) {
+  const files = { "work/extract.py": code, "data/email.txt": emailText, "data/invoice.txt": invoiceText, ...(unsafe ? extraFiles : {}) };
+  const network = unsafe ? "host" : "disabled";
   const t0 = Date.now();
   const sandbox = await getWasmer().sandboxes.create({
     packages: ["python/python"],
-    network: { mode: "disabled" },
+    network: { mode: network },
     files,
   });
   let out;
@@ -43,8 +44,9 @@ export async function runExtractor({ code, emailText, invoiceText = "" }) {
     stdout,
     stderr,
     extraction: lastJsonLine(stdout),
-    denied: classifyDenials(stdout + "\n" + stderr),
-    policy: SANDBOX_POLICY,
+    denied: unsafe ? [] : classifyDenials(stdout + "\n" + stderr),
+    unsafe,
+    policy: { ...SANDBOX_POLICY, network, mounts: Object.keys(files) },
   };
 }
 
@@ -63,7 +65,7 @@ function lastJsonLine(s) {
 
 function classifyDenials(stderr) {
   const denied = [];
-  if (/Name does not resolve|URLError|gaierror|Network is unreachable|Connection refused|ENOTCONN/i.test(stderr)) {
+  if (/Name does not resolve|URLError|urlopen error|gaierror|Network is unreachable|Connection refused|ECONNREFUSED|ENOTCONN|EHOSTUNREACH|ENETUNREACH/i.test(stderr)) {
     denied.push({ capability: "outbound network", detail: "sandbox network policy is disabled; DNS and TCP are unavailable to the guest" });
   }
   const nf = stderr.match(/No such file or directory: '([^']+)'/);

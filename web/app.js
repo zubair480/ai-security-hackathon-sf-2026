@@ -115,6 +115,7 @@ function applyEvent(ev, replay) {
     }
     case "agent.code": { const c=caseFor(d.messageId); c.code=d.code; c.mode=d.mode; c.at.code=ev.at; break; }
     case "sandbox.result": { const c=caseFor(d.messageId); c.sandbox=d; c.at.sandbox=ev.at; break; }
+    case "attacker.received": { if (!d.messageId) break; const c=caseFor(d.messageId); (c.exfil ??= []).push(d); if (!replay && d.bytes) toast("Data left the machine", d.bytes + " bytes reached " + d.path); break; }
     case "agent.proposal": { const c=caseFor(d.messageId); c.proposals=d.proposals; c.at.proposal=ev.at; break; }
     case "ledger.decision": {
       const id=d.proposal?.source?.messageId; if (!id) break;
@@ -167,7 +168,7 @@ function renderRunbook() {
   const key=RUNBOOK[state.selected], ui=SCENARIO_UI[key];
   const disabled=!ready || !state.connected || !!state.busy || isRunning();
   const mailEnabled=state.mailStatus === "connected";
-  replaceHTML("#scenario-detail", '<span class="label">' + ui.expected + '</span><p class="scenario-description">' + ui.description + '</p><button class="btn btn-primary" data-run="' + key + '" data-focus="run-selected" ' + (disabled ? "disabled" : "") + '>' + icon("play") + (state.busy === key || scenarioState(key).cls === "running" ? 'Running scenario…' : 'Run scenario') + '</button><button class="btn btn-ghost" data-send="' + key + '" data-focus="send-selected" ' + (disabled || !mailEnabled ? "disabled" : "") + ' title="' + (mailEnabled ? 'Send a real email to ' + esc(state.inboxes.ap) : 'Live email is unavailable; run the scenario locally.') + '">' + icon("mail") + 'Send live email</button><p class="scenario-note">Runs locally · no email sent<br><kbd>1</kbd>–<kbd>4</kbd> select · <kbd>Enter</kbd> run</p>');
+  replaceHTML("#scenario-detail", '<span class="label">' + ui.expected + '</span><p class="scenario-description">' + ui.description + '</p><button class="btn btn-primary" data-run="' + key + '" data-focus="run-selected" ' + (disabled ? "disabled" : "") + '>' + icon("play") + (state.busy === key || scenarioState(key).cls === "running" ? 'Running scenario…' : 'Run scenario') + '</button><button class="btn btn-ghost" data-send="' + key + '" data-focus="send-selected" ' + (disabled || !mailEnabled ? "disabled" : "") + ' title="' + (mailEnabled ? 'Send a real email to ' + esc(state.inboxes.ap) : 'Live email is unavailable; run the scenario locally.') + '">' + icon("mail") + 'Send live email</button>' + (key === "attack" ? '<button class="btn btn-danger" data-run-unsafe="attack" data-focus="run-unsafe" ' + (disabled ? "disabled" : "") + ' title="Same email and same agent code, but with the Wasmer boundary removed: network open and the payee file mounted">Run without sandbox</button>' : '') + '<p class="scenario-note">Runs locally · no email sent<br><kbd>1</kbd>–<kbd>4</kbd> select · <kbd>Enter</kbd> run</p>');
 }
 function renderApprovals() {
   const changes=(state.ledger?.pendingChanges ?? []).slice().reverse();
@@ -203,7 +204,12 @@ function renderSummary(c) {
   if (outcome === "BLOCKED") description=payment?.summary ?? c.decisions.find(d => d.status === "BLOCKED")?.summary;
   if (outcome === "ERROR") description=c.error;
   const denials=c.sandbox?.denied?.length ?? 0;
-  return '<div class="case-summary ' + outcome + '"><div class="summary-top"><h3>' + title + '</h3>' + (amount != null ? '<span class="mono">' + money(amount) + '</span>' : '') + '</div><p>' + esc(description) + '</p><div class="boundary-strip"><span><i class="dot ' + (c.sandbox ? "on" : "") + '"></i>Wasmer · ' + (c.sandbox ? denials ? denials + " reported denials" : "execution complete" : "awaiting execution") + '</span><span><i class="dot ' + (c.decisions.length ? "on" : "") + '"></i>Ledger · ' + (c.decisions.length ? "proposal checked" : "awaiting proposal") + '</span></div></div>';
+  const unsafe=!!(c.sandbox?.unsafe || c.email?.unsafe);
+  const leaked=(c.exfil ?? []).filter(h => h.bytes > 0);
+  const leakedBytes=leaked.reduce((s,h) => s + h.bytes, 0);
+  const exfil=unsafe ? '<div class="exfil ' + (leaked.length ? "hit" : "") + '"><strong>' + (leaked.length ? "Data left the machine" : c.sandbox ? "No data left the machine" : "Sandbox removed for this run") + '</strong><span>' + (leaked.length ? esc(leaked.map(h => h.bytes.toLocaleString() + " bytes of the approved-payee file uploaded to " + h.path).join("; ")) + ". The email's script did exactly what it said. Only the ledger stood between the agent and the money." : "Network open and payee file mounted: the same script that Wasmer stopped is now free to run.") + '</span></div>' : '';
+  const wasmerLabel=unsafe ? (c.sandbox ? "OFF · network open, payee file mounted" : "OFF for this run") : (c.sandbox ? denials ? denials + " reported denials" : "execution complete" : "awaiting execution");
+  return '<div class="case-summary ' + outcome + '"><div class="summary-top"><h3>' + title + '</h3>' + (amount != null ? '<span class="mono">' + money(amount) + '</span>' : '') + '</div><p>' + esc(description) + '</p>' + exfil + '<div class="boundary-strip"><span class="' + (unsafe ? "bad" : "") + '"><i class="dot ' + (unsafe ? "bad" : c.sandbox ? "on" : "") + '"></i>Wasmer · ' + wasmerLabel + '</span><span><i class="dot ' + (c.decisions.length ? "on" : "") + '"></i>Ledger · ' + (c.decisions.length ? "proposal checked" : "awaiting proposal") + '</span></div></div>';
 }
 function renderCase(c) {
   logPrefix="log-"+c.n; logIndex=0;
@@ -250,10 +256,16 @@ function rowSandbox(c) {
     ? `<div class="kv-grid">${Object.entries(ex).map(([k, v]) => `<div><div class="k">${esc(k)}</div><div class="v ${v === null ? "null" : ""}">${esc(v === null ? "null" : v)}</div></div>`).join("")}</div>`
     : `<div class="danger" style="margin-bottom:8px">No JSON extraction produced.</div>`;
   const deniedList = s.denied?.length ? `<div class="denied-list">${s.denied.map((d) => `<div class="denied-line"><b>${d.capability === "outbound network" ? "net.connect" : d.capability === "file access" ? "fs.read" : esc(d.capability)}</b><span>${esc(d.detail)}</span></div>`).join("")}</div>` : "";
-  const policy = `<div class="hint" style="margin:0 0 8px">network <b>disabled</b> · mounted <span class="mono">data/email.txt, data/invoice.txt</span> · ledger, payee file and API keys are not mounted. Reported denials are classified from output; they are not an independent runtime audit.</div>`;
+  const unsafe = !!s.unsafe;
+  const policy = unsafe
+    ? `<div class="hint danger-text" style="margin:0 0 8px">Sandbox removed for comparison: network <b>host</b> · mounted <span class="mono">${esc((s.policy?.mounts ?? []).join(", "))}</span>. Same agent code as the protected run.</div>`
+    : `<div class="hint" style="margin:0 0 8px">network <b>disabled</b> · mounted <span class="mono">data/email.txt, data/invoice.txt</span> · ledger, payee file and API keys are not mounted. Reported denials are classified from output; they are not an independent runtime audit.</div>`;
+  const hits = (c.exfil ?? []).map((h) => `<div class="denied-line hit"><b>${esc(h.method)} ${esc(h.path)}</b><span>${h.bytes ? h.bytes.toLocaleString() + " bytes received by the attacker endpoint" : "request reached the attacker endpoint"}${h.preview ? ` · <span class="mono">${esc(h.preview.slice(0, 80))}…</span>` : ""}</span></div>`).join("");
+  const hitList = hits ? `<div class="denied-list">${hits}</div>` : "";
   const stderr = s.stderr?.trim() ? `<div class="label" style="margin:8px 0 4px">stderr</div>${logBlock(s.stderr, { classify: stderrClass })}` : "";
   const stdout = s.stdout?.trim() ? `<div class="label" style="margin:8px 0 4px">stdout</div>${logBlock(s.stdout, { classify: stderrClass })}` : "";
-  return row(c, 3, `Wasmer sandbox runs it ${denied}`, `exit ${s.exitCode} · ${ms(s.ms)}`, `${policy}${deniedList}${extraction}${stdout}${stderr}`);
+  const head = unsafe ? `Sandbox off: code runs unconfined <span class="tag danger">NO BOUNDARY</span>${hits ? `<span class="tag danger">DATA LEFT</span>` : ""}` : `Wasmer sandbox runs it ${denied}`;
+  return row(c, 3, head, `exit ${s.exitCode} · ${ms(s.ms)}`, `${policy}${hitList}${deniedList}${extraction}${stdout}${stderr}`);
 }
 
 function rowProposals(c) {
@@ -322,13 +334,13 @@ async function post(url,body) {
   if (!r.ok) throw new Error(data.error ?? r.statusText);
   return data;
 }
-async function runScenario(key,live=false) {
+async function runScenario(key,live=false,unsafe=false) {
   if (state.busy || isRunning() || !state.connected) return;
   if (!RUNBOOK.includes(key)) return;
   if (live && state.mailStatus !== "connected") return;
   state.selected=RUNBOOK.indexOf(key); state.busy=key; renderAll();
   try {
-    await post("/api/scenario/"+key+(live?"/send":"/run"));
+    await post("/api/scenario/"+key+(live?"/send":"/run"), unsafe ? { sandbox: "off" } : {});
     await syncState(false);
     if (live) toast("Scenario email sent","Waiting for the inbox listener.");
     else {
@@ -409,7 +421,8 @@ function setTheme(theme) {
 }
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button"); if (!t || t.disabled) return;
-  if (t.dataset.run) await runScenario(t.dataset.run);
+  if (t.dataset.runUnsafe) await runScenario(t.dataset.runUnsafe, false, true);
+  else if (t.dataset.run) await runScenario(t.dataset.run);
   else if (t.dataset.send) await runScenario(t.dataset.send,true);
   else if (t.dataset.select!==undefined) { state.selected=Number(t.dataset.select); renderRunbook(); }
   else if (t.dataset.toggleCase) {

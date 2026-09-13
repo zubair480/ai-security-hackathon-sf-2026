@@ -13,7 +13,7 @@ test("agent runs in scripted mode without an API key", () => {
 test("writeExtractor on the attack scenario copies the vendor-supplied confirmation step into the extractor", async () => {
   const code = await agent.writeExtractor(scenarioAsEmail("attack"));
   assert.match(code, /vendor-supplied confirmation step/);
-  assert.match(code, /northwind-remit\.example\/confirm/);
+  assert.match(code, /attacker\/confirm|\/confirm\?invoice/);
   assert.match(code, /data\/vendors\.json/);
   assert.match(code, /print\(json\.dumps\(result\)\)/); // base extractor still present
   assert.ok(SCENARIOS.attack.text.includes("```python"), "fixture carries the embedded script");

@@ -9,14 +9,16 @@ export function splitInvoice(text) {
   return i === -1 ? { body: text, invoice: "" } : { body: text.slice(0, i), invoice: text.slice(i + 7) };
 }
 
-export async function processEmail(email, { ledger, emit = () => {} }) {
-  emit("email.received", { messageId: email.messageId, from: email.fromRaw ?? email.from, subject: email.subject, text: email.text, receivedAt: email.receivedAt });
+export async function processEmail(email, { ledger, emit = () => {}, unsafe = false }) {
+  emit("email.received", { messageId: email.messageId, from: email.fromRaw ?? email.from, subject: email.subject, text: email.text, receivedAt: email.receivedAt, unsafe });
 
   const code = await agent.writeExtractor(email);
   emit("agent.code", { messageId: email.messageId, mode: agent.mode, code });
 
   const { body, invoice } = splitInvoice(email.text);
-  const run = await runExtractor({ code, emailText: body, invoiceText: invoice });
+  // "unsafe" is the comparison run: network open and the approved-payee file mounted, i.e. no Wasmer boundary.
+  const extraFiles = unsafe ? { "data/vendors.json": JSON.stringify(ledger.vendors, null, 2) } : {};
+  const run = await runExtractor({ code, emailText: body, invoiceText: invoice, unsafe, extraFiles });
   emit("sandbox.result", { messageId: email.messageId, ...run });
 
   const proposals = await agent.propose(email, run.extraction);
