@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PayeeLock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-left">
+    <span class="product">PayeeLock</span>
+    <span class="env" id="env">SANDBOX</span>
+  </div>
+  <div class="topbar-right">
+    <span class="sys"><i class="dot" id="dot-mail"></i><span id="st-mail">connecting</span></span>
+    <span class="sys"><i class="dot" id="dot-agent"></i><span id="st-agent">agent idle</span></span>
+    <span class="clock mono" id="clock"></span>
+    <button class="btn btn-ghost" id="btn-reset" title="Reset ledger and clear cases">Reset</button>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="rail">
+    <section class="panel">
+      <h2 class="label">Runbook</h2>
+      <ol class="runbook" id="runbook"></ol>
+      <p class="hint">Sends real email to <span class="mono" id="ap-inbox"></span>. Keys <kbd>1</kbd>–<kbd>4</kbd> select, <kbd>⏎</kbd> sends.</p>
+    </section>
+    <section class="panel">
+      <h2 class="label">Approvals <span class="mono count" id="approvals-count"></span></h2>
+      <div id="approvals"></div>
+    </section>
+  </aside>
+
+  <section class="center">
+    <div class="center-head">
+      <h2 class="label">Cases</h2>
+      <span class="meta mono" id="case-count"></span>
+    </div>
+    <div id="cases" class="cases"></div>
+  </section>
+
+  <aside class="rail rail-right">
+    <section class="metrics">
+      <div class="metric">
+        <div class="label">Stopped</div>
+        <div class="metric-value mono hero danger" id="m-stopped" data-roll>$0.00</div>
+      </div>
+      <div class="metric">
+        <div class="label">Paid</div>
+        <div class="metric-value mono" id="m-paid" data-roll>$0.00</div>
+      </div>
+      <div class="metric">
+        <div class="label">Held</div>
+        <div class="metric-value mono" id="m-held" data-roll>0</div>
+      </div>
+    </section>
+    <section class="panel">
+      <h2 class="label">Approved payees</h2>
+      <div id="vendors"></div>
+    </section>
+    <section class="panel">
+      <h2 class="label">Invoices</h2>
+      <table class="table" id="invoices"></table>
+    </section>
+    <section class="panel">
+      <h2 class="label">Payments</h2>
+      <table class="table" id="payments"></table>
+    </section>
+    <section class="panel">
+      <h2 class="label">Sandbox policy</h2>
+      <table class="table kv" id="policy"></table>
+    </section>
+  </aside>
+</main>
+
+<div id="toasts" class="toasts"></div>
+<script src="app.js"></script>
+</body>
+</html>
