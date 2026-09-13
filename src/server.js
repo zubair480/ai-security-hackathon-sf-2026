@@ -18,6 +18,12 @@ const events = [];
 const clients = new Set();
 const processed = new Set();
 let queue = Promise.resolve();
+let mailStatus = process.env.AGENTMAIL_API_KEY ? "connecting" : "disabled";
+
+function updateMailStatus(status) {
+  mailStatus = status;
+  emit("system.mail", { status });
+}
 
 function emit(type, data) {
   const ev = { seq: events.length + 1, at: new Date().toISOString(), type, data };
@@ -54,12 +60,12 @@ app.use(express.json());
 app.use(express.static(path.join(here, "..", "web")));
 
 app.get("/api/state", (req, res) => {
-  res.json({ ledger: ledger.snapshot(), events, inboxes: INBOXES, agentMode: agent.mode, sandbox: SANDBOX_POLICY, scenarios: Object.fromEntries(Object.entries(SCENARIOS).map(([k, s]) => [k, { title: s.title, from: INBOXES[s.from], subject: s.subject }])) });
+  res.json({ ledger: ledger.snapshot(), events, inboxes: INBOXES, agentMode: agent.mode, mailStatus, sandbox: SANDBOX_POLICY, scenarios: Object.fromEntries(Object.entries(SCENARIOS).map(([k, s]) => [k, { title: s.title, from: INBOXES[s.from], subject: s.subject }])) });
 });
 
 app.get("/api/events", (req, res) => {
   res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
-  res.write(`data: ${JSON.stringify({ type: "hello", data: { agentMode: agent.mode } })}\n\n`);
+  res.write(`data: ${JSON.stringify({ type: "hello", data: { agentMode: agent.mode, mailStatus } })}\n\n`);
   clients.add(res);
   req.on("close", () => clients.delete(res));
 });
@@ -111,6 +117,7 @@ app.post("/api/changes/:id/reject", (req, res) => {
 app.post("/api/reset", (req, res) => {
   ledger.reset();
   events.length = 0;
+  emit("ledger.reset", {});
   emit("ledger.state", ledger.snapshot());
   res.json({ ok: true });
 });
@@ -124,12 +131,17 @@ app.listen(PORT, async () => {
   try {
     const inboxes = await ensureInboxes();
     console.log("inboxes:", inboxes.map((i) => `${i.inboxId} (${i.displayName})`).join(", "));
-    await listen((email) => {
+    const socket = await listen((email) => {
       console.log(`[mail] inbound ${email.messageId} from ${email.fromRaw}: ${email.subject}`);
       handleInbound(email);
     });
+    updateMailStatus("connected");
+    socket.on("close", () => updateMailStatus("disconnected"));
+    socket.on("error", () => updateMailStatus("error"));
+    socket.on("open", () => updateMailStatus("connected"));
     console.log(`[mail] listening on ${INBOXES.ap}`);
   } catch (err) {
+    updateMailStatus("error");
     console.error("AgentMail setup failed:", err.message);
   }
 });

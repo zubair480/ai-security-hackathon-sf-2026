@@ -1,5 +1,7 @@
 # PayeeLock UI Brief
 
+Historical initial design reference. The enhanced implementation and validation are documented in [UI-NOTES.md](UI-NOTES.md); that update supersedes the original pixel-level layout, palette, and component restrictions below.
+
 Target: a payment-control console that reads like Linear/Stripe/Mercury ops tooling, not a landing page. The judge sees it on a projector for ~3 minutes. Every rule below is a number or a yes/no; if a choice isn't listed, default to "less".
 
 Grounding: Anthropic's own [frontend-design skill](https://github.com/anthropics/skills/blob/main/frontend-design/SKILL.md) names the slop defaults (Inter-everywhere, purple gradients on white, predictable card layouts). A [scoring of 1,590 Show HN sites](https://www.adriankrebs.ch/blog/design-slop/) found 54% carried 2+ of 16 slop tells. [Refactoring UI](https://www.sglavoie.com/posts/2023/09/09/book-summary-refactoring-ui/): design in grayscale first, hierarchy via size/weight/color, shadows "mostly invisible". Vercel's [Web Interface Guidelines](https://github.com/vercel-labs/web-interface-guidelines): `tabular-nums` on numbers, animate only `transform`/`opacity`, never `transition: all`, honor `prefers-reduced-motion`.

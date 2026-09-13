@@ -67,11 +67,11 @@ Inbox addresses are hard-coded in `src/fixtures.js` (`INBOXES`). `npm run setup`
 
 `npm run demo` accepts one scenario name: `node src/demo.js attack`. Scenario names are `legit`, `attack`, `bankchange`, `approve`, `pay0913`.
 
-`npm run serve` without `AGENTMAIL_API_KEY` still works; the dashboard's "Run offline" buttons process scenarios locally and "Send email" is unavailable. Ledger state persists to `.state/ledger.json` in serve mode; the "Reset ledger" button clears it.
+`npm run serve` without `AGENTMAIL_API_KEY` still works; the dashboard's "Run scenario" button processes scenarios locally and "Send live email" is unavailable. Ledger state persists to `.state/ledger.json` in serve mode; "Reset demo" opens a confirmation before clearing it. Restart an already-running server to pick up the mail-status and reset-event API additions.
 
 ## Demo runbook
 
-Open `http://localhost:4310`. The left rail lists four steps. "Send email" sends a real message from the scenario's inbox to the AP inbox through AgentMail; the websocket listener picks it up and the case appears in the center column. "Run offline" skips the round trip. Each case shows six steps: email received, agent writes extractor, sandbox runs it, agent proposes actions, ledger decides, reply sent.
+Open `http://localhost:4310`. The left rail lists four steps. "Run scenario" executes locally without sending email. "Send live email" sends a real message from the scenario's inbox to the AP inbox through the existing email integration when connected. Each case leads with its decision, then offers expandable email, agent code, sandbox output, proposals, and ledger checks. A reply step appears only when a live reply was actually sent.
 
 1. **Legitimate invoice** from `northwind-billing@agentmail.to`, INV-2026-0912, $48,250.00, "remit to the account on file".
    Watch for: sandbox exit 0, no denials; proposal `PAY` with no bank details; ledger `EXECUTED` to routing 121000248. Paid metric becomes $48,250.00. Baseline: the system does pay.
@@ -91,7 +91,9 @@ The same sequence runs headless with `npm run demo`, which prints each step and 
 
 ### Dashboard
 
-The console is a single page in `web/` with three columns. The left rail holds the runbook (keys 1-4 select a scenario, Enter sends it) and the approvals queue for pending bank changes. The center column is the case timeline; each row expands to show the inbound email, the agent's generated code, the sandbox run with any denied capabilities, the proposals, and the ledger decision with every check listed. The right rail shows metrics, approved payees, invoices and payments. The layout and styling follow `docs/UI-BRIEF.md`, which is the design spec it was built against.
+The console is a responsive single page in `web/`. The runbook is on the left; keys 1–4 select and Enter runs a local scenario when focus is outside another control. Payment totals sit above searchable activity with All / Blocked / Held / Executed filters. Each case leads with a decision summary and has keyboard-accessible evidence disclosures and a JSON export. The right column contains the verification queue, trusted payee records, and invoice/payment tabs. On phones, the runbook becomes a compact four-step row and the content stacks.
+
+"Review callback" displays the existing verification record and requires an explicit callback attestation. It records the operator's statement; it does not place or verify a call. Rejection requires a nonblank reason. The header environment button opens the sandbox policy on every screen size. Light/dark theme preference is saved locally, and reduced-motion settings are respected. The dashboard stream and mail connection are tracked separately. See `docs/UI-NOTES.md` for the redesign and its verification results; `docs/UI-BRIEF.md` is the original design reference.
 
 ## Sponsor tools
 
