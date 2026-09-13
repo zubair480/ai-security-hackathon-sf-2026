@@ -1,0 +1,13 @@
+node_modules
+.state
+.wasmer
+.env
+.env.example
+.git
+.claude
+docs
+tests
+scripts
+cloudflare
+README.md
+wrangler.jsonc
