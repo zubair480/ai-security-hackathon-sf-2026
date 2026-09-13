@@ -63,9 +63,31 @@ export function normalizeInbound(msg) {
   };
 }
 
-/** Subscribe to inbound mail on the AP inbox. onMessage receives a normalized email. */
-export async function listen(onMessage) {
+/**
+ * Subscribe to inbound mail on the AP inbox. onMessage receives a normalized email.
+ * Two delivery paths run at once: the websocket (fast) and a poll of the inbox every
+ * `pollMs` (safety net for silent socket drops). The server dedups by message id.
+ */
+export async function listen(onMessage, { pollMs = 15000 } = {}) {
+  const startedAt = Date.now() - 5000;
+  const seen = new Set();
+  const deliver = (msg, via) => {
+    if (!msg?.messageId || seen.has(msg.messageId)) return;
+    seen.add(msg.messageId);
+    console.log(`[mail] inbound via ${via}: ${msg.subject ?? ""}`);
+    onMessage(normalizeInbound(msg));
+  };
+
+  const subscribe = (socket) => socket.sendSubscribe({ type: "subscribe", inboxIds: [INBOXES.ap], eventTypes: ["message.received"] });
   const socket = await mail.websockets.connect();
+  socket.on("open", () => {
+    console.log("[mail] socket open, subscribing");
+    try {
+      subscribe(socket);
+    } catch (err) {
+      console.warn("[mail] subscribe on open failed:", err.message);
+    }
+  });
   socket.on("message", (ev) => {
     const kind = ev.type === "event" ? ev.eventType : ev.type;
     if (kind === "subscribed") {
@@ -74,11 +96,40 @@ export async function listen(onMessage) {
     }
     if (!/message[._]received$/.test(String(kind))) return;
     if (ev.message?.inboxId && ev.message.inboxId !== INBOXES.ap) return;
-    onMessage(normalizeInbound(ev.message));
+    deliver(ev.message, "websocket");
   });
   socket.on("close", (e) => console.log("[mail] socket closed", e?.code, e?.reason));
   socket.on("error", (e) => console.error("[mail] socket error", e?.message ?? e));
   await socket.waitForOpen();
-  socket.sendSubscribe({ type: "subscribe", inboxIds: [INBOXES.ap], eventTypes: ["message.received"] });
+  try {
+    subscribe(socket);
+  } catch {
+    /* the open handler covers it */
+  }
+
+  // Poll fallback: catches anything the socket missed.
+  let polling = false;
+  const poll = async () => {
+    if (polling) return;
+    polling = true;
+    try {
+      const res = await mail.inboxes.messages.list(INBOXES.ap, { limit: 10 });
+      for (const item of res.messages ?? []) {
+        if (seen.has(item.messageId)) continue;
+        if (new Date(item.timestamp).getTime() < startedAt) continue;
+        const labels = item.labels ?? [];
+        if (labels.includes("sent") || !labels.includes("received")) continue;
+        const full = await mail.inboxes.messages.get(INBOXES.ap, item.messageId);
+        deliver(full, "poll");
+      }
+    } catch (err) {
+      console.warn("[mail] poll failed:", err.message);
+    } finally {
+      polling = false;
+    }
+  };
+  const timer = setInterval(poll, pollMs);
+  timer.unref?.();
+  socket.stopPolling = () => clearInterval(timer);
   return socket;
 }
