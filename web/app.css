@@ -169,7 +169,7 @@ kbd { font: 500 11px/14px var(--mono); color: var(--text-3); border: 1px solid v
 .case.collapsed .case-body { display: none; }
 
 .row {
-  display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 8px; align-items: center;
+  display: grid; grid-template-columns: 12px minmax(0, 1fr) minmax(0, auto); gap: 8px; align-items: center;
   min-height: 28px; padding-left: 12px; margin-left: 5px; border-left: 1px solid var(--border);
   position: relative; animation: enter 120ms var(--ease-out);
 }
@@ -283,7 +283,11 @@ kbd { font: 500 11px/14px var(--mono); color: var(--text-3); border: 1px solid v
   .rail-right { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
   .rail-right .metrics { grid-column: 1 / -1; }
 }
-.row-side { min-width: 0; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; justify-content: flex-end; }
+.row-side { display: block; min-width: 0; max-width: 440px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.row-side .stamp { vertical-align: middle; }
+.table td.fit, .table th.fit { max-width: none; width: 1%; }
+.topbar-right { min-width: 0; }
+@media (max-width: 480px) { .topbar .sys { display: none; } }
 @media (max-width: 860px) {
   .layout { grid-template-columns: 1fr; }
   .rail { border-right: 0; border-bottom: 1px solid var(--border); }
@@ -296,6 +300,9 @@ kbd { font: 500 11px/14px var(--mono); color: var(--text-3); border: 1px solid v
   .topbar .sys:nth-child(2), .clock { display: none; }
   .step-actions { display: inline-flex; }
   .step-meta { display: none; }
+  .row { grid-template-columns: 12px minmax(0, 1fr); padding: 4px 0 4px 12px; }
+  .row-side { grid-column: 2; max-width: none; text-align: left; }
+  .row-name { flex-wrap: wrap; }
   .check { grid-template-columns: 12px minmax(0, 1fr); }
   .check .r { grid-column: 2; text-align: left; max-width: none; white-space: normal; }
   .decision-head { flex-wrap: wrap; }

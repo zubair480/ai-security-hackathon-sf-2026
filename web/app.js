@@ -299,7 +299,7 @@ function renderLedger() {
       <td><span class="st"><i class="dot ${i.status === "paid" ? "on" : ""}"></i>${esc(i.status)}</span></td></tr>`).join("");
 
   $("#payments").innerHTML = L.payments.length
-    ? `<tr><th>Invoice</th><th class="num">Amount</th><th class="num">To</th></tr>` + L.payments.map((p) => `<tr><td class="id">${esc(p.invoiceId)}</td><td class="num">${money(p.amount)}</td><td class="num" title="${esc(bank(p.bank))}">${esc(mask(p.bank.account))}</td></tr>`).join("")
+    ? `<tr><th>Invoice</th><th class="num">Amount</th><th class="num fit">To</th></tr>` + L.payments.map((p) => `<tr><td class="id">${esc(p.invoiceId)}</td><td class="num">${money(p.amount)}</td><td class="num fit" title="${esc(bank(p.bank))}">${esc(mask(p.bank.account))}</td></tr>`).join("")
     : `<tr><td class="empty" style="border:0;padding:0">No payments executed.</td></tr>`;
 }
 
