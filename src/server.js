@@ -36,6 +36,7 @@ function emit(type, data) {
 }
 
 let currentCaseId = null; // case being processed, so attacker-endpoint hits can be attributed
+const pendingUnsafe = new Set(); // subjects sent live with the sandbox removed, matched on inbound
 
 function handleInbound(email, { reply = true, unsafe = false } = {}) {
   if (processed.has(email.messageId)) return;
@@ -78,9 +79,12 @@ app.get("/api/events", (req, res) => {
 // Send a scenario email through AgentMail; the websocket listener picks it up.
 app.post("/api/scenario/:name/send", async (req, res) => {
   try {
+    const unsafe = req.body?.sandbox === "off";
     const sent = await sendScenario(req.params.name);
-    emit("email.sent", { ...sent, scenario: req.params.name });
-    res.json(sent);
+    // Remember the subject so the matching inbound email is processed with the sandbox removed.
+    if (unsafe) pendingUnsafe.add(sent.subject);
+    emit("email.sent", { ...sent, scenario: req.params.name, unsafe });
+    res.json({ ...sent, unsafe });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -150,8 +154,9 @@ app.listen(PORT, async () => {
     const inboxes = await ensureInboxes();
     console.log("inboxes:", inboxes.map((i) => `${i.inboxId} (${i.displayName})`).join(", "));
     const socket = await listen((email) => {
-      console.log(`[mail] inbound ${email.messageId} from ${email.fromRaw}: ${email.subject}`);
-      handleInbound(email);
+      const unsafe = pendingUnsafe.delete(email.subject);
+      console.log(`[mail] inbound ${email.messageId} from ${email.fromRaw}: ${email.subject}${unsafe ? " [sandbox off]" : ""}`);
+      handleInbound(email, { unsafe });
     });
     updateMailStatus("connected");
     socket.on("close", () => updateMailStatus("disconnected"));

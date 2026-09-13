@@ -168,7 +168,7 @@ function renderRunbook() {
   const key=RUNBOOK[state.selected], ui=SCENARIO_UI[key];
   const disabled=!ready || !state.connected || !!state.busy || isRunning();
   const mailEnabled=state.mailStatus === "connected";
-  replaceHTML("#scenario-detail", '<span class="label">' + ui.expected + '</span><p class="scenario-description">' + ui.description + '</p><button class="btn btn-primary" data-run="' + key + '" data-focus="run-selected" ' + (disabled ? "disabled" : "") + '>' + icon("play") + (state.busy === key || scenarioState(key).cls === "running" ? 'Running scenario…' : 'Run scenario') + '</button><button class="btn btn-ghost" data-send="' + key + '" data-focus="send-selected" ' + (disabled || !mailEnabled ? "disabled" : "") + ' title="' + (mailEnabled ? 'Send a real email to ' + esc(state.inboxes.ap) : 'Live email is unavailable; run the scenario locally.') + '">' + icon("mail") + 'Send live email</button>' + (key === "attack" ? '<button class="btn btn-danger" data-run-unsafe="attack" data-focus="run-unsafe" ' + (disabled ? "disabled" : "") + ' title="Same email and same agent code, but with the Wasmer boundary removed: network open and the payee file mounted">Run without sandbox</button>' : '') + '<p class="scenario-note">Runs locally · no email sent<br><kbd>1</kbd>–<kbd>4</kbd> select · <kbd>Enter</kbd> run</p>');
+  replaceHTML("#scenario-detail", '<span class="label">' + ui.expected + '</span><p class="scenario-description">' + ui.description + '</p><button class="btn btn-primary" data-run="' + key + '" data-focus="run-selected" ' + (disabled ? "disabled" : "") + '>' + icon("play") + (state.busy === key || scenarioState(key).cls === "running" ? 'Running scenario…' : 'Run scenario') + '</button><button class="btn btn-ghost" data-send="' + key + '" data-focus="send-selected" ' + (disabled || !mailEnabled ? "disabled" : "") + ' title="' + (mailEnabled ? 'Send a real email to ' + esc(state.inboxes.ap) : 'Live email is unavailable; run the scenario locally.') + '">' + icon("mail") + 'Send live email</button>' + (key === "attack" ? '<button class="btn btn-danger" data-run-unsafe="attack" data-focus="run-unsafe" ' + (disabled ? "disabled" : "") + ' title="Same email and same agent code, Wasmer boundary removed: network open and the payee file mounted. ' + (mailEnabled ? "Sends a real email; the inbound run has no sandbox." : "Runs locally.") + '">' + icon("shield") + (mailEnabled ? "Send live · no sandbox" : "Run without sandbox") + '</button>' : '') + '<p class="scenario-note">Runs locally · no email sent<br><kbd>1</kbd>–<kbd>4</kbd> select · <kbd>Enter</kbd> run</p>');
 }
 function renderApprovals() {
   const changes=(state.ledger?.pendingChanges ?? []).slice().reverse();
@@ -342,7 +342,7 @@ async function runScenario(key,live=false,unsafe=false) {
   try {
     await post("/api/scenario/"+key+(live?"/send":"/run"), unsafe ? { sandbox: "off" } : {});
     await syncState(false);
-    if (live) toast("Scenario email sent","Waiting for the inbox listener.");
+    if (live) toast(unsafe ? "Attack email sent · sandbox OFF" : "Scenario email sent", unsafe ? "The inbound email will run with no Wasmer boundary." : "Waiting for the inbox listener.");
     else {
       const c=state.order.map(id=>state.cases.get(id)).find(x=>x.email?.subject===state.scenarios[key].subject);
       if (c?.error) toast("Scenario failed",c.error);
@@ -421,7 +421,7 @@ function setTheme(theme) {
 }
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button"); if (!t || t.disabled) return;
-  if (t.dataset.runUnsafe) await runScenario(t.dataset.runUnsafe, false, true);
+  if (t.dataset.runUnsafe) await runScenario(t.dataset.runUnsafe, state.mailStatus === "connected", true);
   else if (t.dataset.run) await runScenario(t.dataset.run);
   else if (t.dataset.send) await runScenario(t.dataset.send,true);
   else if (t.dataset.select!==undefined) { state.selected=Number(t.dataset.select); renderRunbook(); }
