@@ -3,57 +3,60 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#f5f3ed">
-<title>PayeeLock — Payment investigations</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23282925'/%3E%3Ctext x='8' y='24' font-size='25' font-family='Georgia' fill='%23f5f3ed'%3Ep%3C/text%3E%3C/svg%3E">
+<meta name="theme-color" content="#172621">
+<meta name="description" content="PayeeLock payment control console. Trace agent decisions, review bank changes, and protect the approved payee record.">
+<title>PayeeLock · Payment control</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23172621'/%3E%3Cpath d='m20 8 10 4v8c0 6-10 12-10 12S10 26 10 20v-8z' fill='none' stroke='%23c6e6d2' stroke-width='2'/%3E%3Cpath d='m15 20 3 3 7-7' fill='none' stroke='%23c6e6d2' stroke-width='2'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
-<a class="skip-link" href="#workspace">Skip to investigation</a>
-<header class="masthead">
-  <a class="wordmark" href="/" aria-label="PayeeLock home">PayeeLock<span class="brand-period">.</span></a>
-  <nav class="main-nav" aria-label="Workspace"><button data-view="investigation" aria-pressed="true">Investigations</button><button data-view="register" aria-pressed="false">Payee register</button></nav>
-  <div class="masthead-actions"><button id="btn-policy-status" class="environment" aria-label="View environment and sandbox policy"><i class="dot" id="dot-mail"></i><span id="st-mail">Connecting</span></button><button id="btn-demo" class="button">Demo controls <span aria-hidden="true">↗</span></button></div>
-</header>
-<div class="workbench">
-<aside class="incident-rail" aria-label="Payment incidents">
-  <div class="rail-heading"><h2>Case files</h2><span class="mono" id="case-count">00</span></div>
-  <label class="case-search"><span class="sr-only">Search cases</span><input id="case-search" type="search" placeholder="Find an invoice…" aria-label="Search cases"></label>
-  <div id="incident-list" class="incident-list"><p class="quiet loading">Loading case files…</p></div>
-  <button class="text-button rail-new" data-open-demo>Run a scenario <span aria-hidden="true">+</span></button>
-  <div class="session-ledger"><h2>Session ledger</h2><div><span>Executed</span><span class="mono" id="m-paid">—</span></div><div><span>Blocked attempts</span><span class="mono" id="m-stopped">—</span></div><div><span>Changes to review</span><button id="btn-queue" class="mono" title="Open verification queue"><span id="m-held">0</span> ↗</button></div><p>USD · simulated payments</p></div>
-  <div class="rail-footer"><span class="mono">SF / 2026</span><span>AI Security Hackathon</span></div>
+<a class="skip-link" href="#workspace">Skip to payment activity</a>
+<div class="app-shell">
+<aside class="sidebar" aria-label="Demo controls">
+  <a class="brand" href="/" aria-label="PayeeLock home"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6z"/><path d="m8 12 3 3 5-6"/></svg></span><span>PayeeLock<span class="brand-sub">PAYMENT CONTROL</span></span></a>
+  <div class="workspace-badge"><span class="workspace-icon">A</span><span>Acme Manufacturing<small>Accounts payable workspace</small></span><span class="env">Demo</span></div>
+  <div class="sidebar-heading"><h2>Demo runbook</h2><span id="runbook-progress" class="mono">0 / 4</span></div>
+  <ol class="runbook" id="runbook"><li class="sidebar-loading">Loading scenarios…</li></ol>
+  <div id="scenario-detail" class="scenario-detail"></div>
+  <div class="sidebar-footer">
+    <div class="boundary-title"><span class="dot on"></span> Two independent boundaries</div>
+    <p>Agent code stays isolated.<br>Payments stay bound to verified payees.</p>
+    <button class="sidebar-link" id="btn-policy">Inspect sandbox policy <span aria-hidden="true">↗</span></button>
+    <div class="event-note">AI SECURITY HACKATHON<span>San Francisco · Sep 13, 2026</span></div>
+  </div>
 </aside>
-<main id="workspace" tabindex="-1">
+<div class="main-shell">
+<header class="topbar">
+  <div class="breadcrumb">Workspace <span aria-hidden="true">/</span> <strong>Payment control</strong></div>
+  <div class="topbar-right"><button class="sys" id="btn-policy-status" aria-label="View sandbox policy and environment" title="View sandbox policy"><i class="dot" id="dot-mail"></i><span id="st-mail">Connecting</span></button><button class="icon-btn" id="btn-theme" aria-label="Switch to dark theme" title="Switch theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M20.8 13.4A9 9 0 0 1 10.6 3.2 9 9 0 1 0 20.8 13.4Z"/></svg></button><span class="avatar" title="Acme Manufacturing demo workspace">AM</span></div>
+</header>
+<main id="workspace" class="workspace" tabindex="-1">
   <div id="connection-alert" class="connection-alert" role="status" hidden></div>
-  <section id="investigation-view"><div id="investigation"><div class="initial-state"><span class="eyebrow">PAYMENT INVESTIGATIONS</span><h1>Loading the evidence.</h1></div></div></section>
-  <section id="register-view" hidden>
-    <div class="register-heading"><span class="eyebrow">TRUSTED SOURCE OF TRUTH</span><h1>Payee register</h1><p>Approved destinations and the records behind them.</p></div>
-    <div id="vendors"></div>
-    <div class="ledger-heading"><h2>Invoice ledger</h2><span class="quiet">USD · simulated payments</span></div><div class="table-wrap"><table id="invoices" class="table" aria-label="Invoice ledger"></table></div>
-    <div class="ledger-heading"><h2>Executed payments</h2></div><div class="table-wrap"><table id="payments" class="table" aria-label="Executed payments"></table></div>
+  <div class="page-heading"><div><div class="eyebrow">PAYEELOCK CONSOLE <span class="heading-separator">/</span> <span class="mono" id="clock"></span></div><h1>Payment control</h1><p>Every agent action, checked against a trusted source of truth.</p></div><button class="btn" id="btn-reset"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 8a7 7 0 1 1 .5 5M3 3v5h5"/></svg>Reset demo</button></div>
+  <section class="metrics" aria-label="Payment summary">
+    <div class="metric metric-protected"><div class="metric-label">Blocked payment value <span class="metric-symbol" aria-hidden="true">↗</span></div><div class="metric-value mono" id="m-stopped">$0.00</div><div class="metric-caption" id="stopped-caption">No blocked payment attempts</div></div>
+    <div class="metric"><div class="metric-label">Paid to verified accounts</div><div class="metric-value mono" id="m-paid">$0.00</div><div class="metric-caption" id="paid-caption">No payments executed</div></div>
+    <div class="metric"><div class="metric-label">Awaiting verification <span class="dot warn"></span></div><div class="metric-value mono" id="m-held">0</div><div class="metric-caption" id="held-caption">No bank changes pending</div></div>
   </section>
-  <footer class="workspace-footer"><span><i class="dot" id="stream-dot"></i><span id="stream-label">Connecting to event stream</span></span><span id="st-agent">Agent configuration</span><button id="btn-theme">Dark appearance</button></footer>
+  <div class="content-grid">
+    <section class="activity panel" aria-labelledby="activity-title">
+      <div class="panel-heading"><div><h2 id="activity-title">Payment activity <span class="count" id="case-count">0</span></h2><p>Follow the decision. Inspect the evidence.</p></div><span class="agent-state"><i class="dot" id="dot-agent"></i><span id="st-agent">Agent idle</span></span></div>
+      <div class="activity-toolbar"><div class="filters" role="group" aria-label="Filter activity"><button data-filter="all" aria-pressed="true">All activity</button><button data-filter="BLOCKED" aria-pressed="false">Blocked</button><button data-filter="PENDING_APPROVAL" aria-pressed="false">Held</button><button data-filter="EXECUTED" aria-pressed="false">Executed</button></div><label class="search"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg><input id="case-search" type="search" placeholder="Search activity" aria-label="Search cases by subject, sender, or invoice"></label></div>
+      <div id="cases" class="cases"><div class="loading-state"><span class="loading-line"></span><span class="loading-line"></span><p>Connecting to your workspace…</p></div></div>
+      <div class="activity-footer"><span><span class="dot" id="stream-dot"></span><span id="stream-label">Connecting to event stream</span></span><span>All amounts in USD</span></div>
+    </section>
+    <aside class="right-column" aria-label="Approvals and trusted records">
+      <section class="panel approvals-panel" aria-labelledby="approvals-title"><div class="panel-heading"><h2 id="approvals-title">Verification queue <span class="count" id="approvals-count">0</span></h2><span class="mini-icon" aria-hidden="true">↗</span></div><div id="approvals"></div></section>
+      <section class="panel" aria-labelledby="payees-title"><div class="panel-heading"><h2 id="payees-title">Trusted payees</h2><span class="label" id="payee-count"></span></div><div id="vendors"></div><div class="panel-footnote">Bank details change only after an independent callback.</div></section>
+      <section class="panel ledger-panel" aria-label="Invoice and payment ledger"><div class="ledger-tabs" role="group" aria-label="Ledger records"><button data-ledger-tab="invoices" aria-pressed="true">Invoices <span id="invoice-count" class="count"></span></button><button data-ledger-tab="payments" aria-pressed="false">Payments <span id="payment-count" class="count"></span></button></div><div id="invoice-pane"><table class="table" id="invoices" aria-label="Invoices"></table></div><div id="payment-pane" hidden><table class="table" id="payments" aria-label="Executed payments"></table></div></section>
+    </aside>
+  </div>
+  <footer class="page-footer"><span><span class="dot on"></span> Sandbox environment · Synthetic records, no real money movement</span><span>Execution isolated with <strong>Wasmer</strong></span></footer>
 </main>
 </div>
-<dialog id="demo-dialog" aria-labelledby="demo-title">
-  <div class="dialog-top"><span class="eyebrow">LOCAL DEMONSTRATION</span><button class="close-button" data-close-demo aria-label="Close demo controls">×</button></div>
-  <h2 id="demo-title">Run the payment story.</h2>
-  <p class="dialog-intro">Each scenario runs through the agent, Wasmer sandbox, and payment ledger.</p>
-  <ol id="runbook" class="runbook"></ol>
-  <div id="scenario-detail"></div>
-  <div class="demo-bottom"><button id="btn-reset" class="text-button">Reset session</button><span class="quiet">Synthetic records. No money moves.</span></div>
-</dialog>
-<dialog id="queue-dialog" aria-labelledby="queue-title">
-  <div class="dialog-top"><span class="eyebrow">OUT-OF-BAND REVIEW</span><button class="close-button" data-close-queue aria-label="Close verification queue">×</button></div>
-  <h2 id="queue-title">Bank change requests <span id="approvals-count" class="mono"></span></h2>
-  <p class="dialog-intro">A request in an email does not authorize a new payment destination.</p>
-  <div id="approvals"></div>
-</dialog>
-<dialog id="action-dialog" aria-labelledby="dialog-title">
-  <form id="dialog-form"><div class="dialog-top"><span class="eyebrow" id="dialog-eyebrow">PAYEELOCK</span><button type="button" class="close-button" data-close-dialog aria-label="Close dialog">×</button></div><h2 id="dialog-title"></h2><div id="dialog-content"></div><p id="dialog-error" class="form-error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="button" data-close-dialog>Cancel</button><button type="submit" class="button button-primary" id="dialog-submit">Confirm</button></div></form>
-</dialog>
-<div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+</div>
+<dialog id="action-dialog" aria-labelledby="dialog-title"><form id="dialog-form"><div class="dialog-top"><span class="eyebrow" id="dialog-eyebrow">PAYEELOCK</span><button type="button" class="icon-btn" data-close-dialog aria-label="Close dialog">×</button></div><h2 id="dialog-title"></h2><div id="dialog-content"></div><p id="dialog-error" class="form-error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="btn" data-close-dialog>Cancel</button><button type="submit" class="btn btn-primary" id="dialog-submit">Confirm</button></div></form></dialog>
+<div id="toasts" class="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
 <script src="app.js" defer></script>
 </body>
 </html>
