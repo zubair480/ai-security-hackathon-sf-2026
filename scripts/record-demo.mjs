@@ -62,90 +62,85 @@ async function holdUntil(startedAt, key, extra = 0.6) {
   if (remaining > 0) await sleep(remaining);
 }
 
-async function openDemo() { await page.click("#btn-demo"); await page.waitForSelector("#demo-dialog[open]"); await sleep(400); }
-async function closeDemo() { const d = await page.$("#demo-dialog[open]"); if (d) { await page.click("[data-close-demo]"); await sleep(300); } }
-async function pickScenario(index) { await page.locator("#runbook button").nth(index).click(); await sleep(500); }
+async function selectScenario(index) { await page.click(`[data-select="${index}"]`); await sleep(500); }
 async function runScenario(index, expectedClass) {
-  const before = await page.locator(".incident-item").count();
-  await openDemo();
-  await pickScenario(index);
+  const before = await page.locator("article.case").count();
+  await selectScenario(index);
   const liveBtn = page.locator("#scenario-detail [data-send]");
   const useLive = !LOCAL && (await liveBtn.count()) && (await liveBtn.isEnabled());
   await (useLive ? liveBtn : page.locator("#scenario-detail [data-run]")).click();
   await sleep(600);
-  await closeDemo();
   try {
-    await page.waitForFunction((n) => document.querySelectorAll(".incident-item").length > n, before, { timeout: useLive ? 45000 : 60000 });
+    await page.waitForFunction((n) => document.querySelectorAll("article.case").length > n, before, { timeout: useLive ? 45000 : 60000 });
   } catch {
     console.log("  live email did not arrive in time, falling back to local run");
-    await openDemo(); await pickScenario(index); await page.locator("#scenario-detail [data-run]").click(); await sleep(600); await closeDemo();
-    await page.waitForFunction((n) => document.querySelectorAll(".incident-item").length > n, before, { timeout: 60000 });
+    await selectScenario(index); await page.locator("#scenario-detail [data-run]").click(); await sleep(600);
+    await page.waitForFunction((n) => document.querySelectorAll("article.case").length > n, before, { timeout: 60000 });
   }
-  await page.waitForSelector(`.verdict.${expectedClass}`, { timeout: 60000 });
+  await page.waitForSelector(`article.case .stamp-${expectedClass}`, { timeout: 60000 });
   console.log(`  case arrived, verdict ${expectedClass} at ${now().toFixed(1)}s`);
+}
+async function openRow(text) {
+  const btn = page.locator("article.case").first().locator(".row-head", { hasText: text }).first();
+  if ((await btn.getAttribute("aria-expanded")) !== "true") await btn.click();
+  await sleep(400);
+  await btn.evaluate((el) => el.scrollIntoView({ block: "start", behavior: "smooth" }));
 }
 
 // ---- reset to a clean session
 await page.goto(BASE, { waitUntil: "networkidle" });
-await page.waitForSelector("#btn-demo");
+await page.waitForSelector("#btn-reset");
 await sleep(800);
-await openDemo();
 await page.click("#btn-reset");
 await page.waitForSelector("#action-dialog[open]");
 await page.click("#dialog-submit");
-await sleep(800);
-await closeDemo();
-await page.waitForSelector(".initial-state");
+await sleep(1200);
 
 // ---- 1 intro
 let t = await startSegment("intro");
-await sleep(9000);
-await openDemo();
+await sleep(10000);
+await selectScenario(1);
+await sleep(3000);
+await selectScenario(0);
 await holdUntil(t, "intro");
-await closeDemo();
 
 // ---- 2 legit
 t = await startSegment("legit");
 await runScenario(0, "EXECUTED");
+await sleep(3000);
+await openRow("Wasmer sandbox");
 await holdUntil(t, "legit");
+await page.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
 
 // ---- 3 attack
 t = await startSegment("attack");
 await runScenario(1, "BLOCKED");
-await sleep(6000);
-await page.click("#diagnostics summary");
-await sleep(500);
-await page.click('[data-diagnostic="output"]');
-await sleep(300);
-await page.locator("#diagnostics").scrollIntoViewIfNeeded();
-await page.evaluate(() => document.getElementById("diagnostics").scrollIntoView({ block: "start", behavior: "smooth" }));
+await sleep(7000);
+await openRow("Wasmer sandbox");
+await sleep(9000);
+await openRow("Ledger");
 await holdUntil(t, "attack");
+await page.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
 
 // ---- 4 bank change + approvals
 t = await startSegment("bankchange");
 await runScenario(2, "PENDING_APPROVAL");
 await sleep(2500);
-await page.click("#btn-queue");
-await page.waitForSelector("#queue-dialog[open]");
-await sleep(1500);
-// reject the look-alike request
-const attackerCard = page.locator(".approval", { has: page.locator(".approval-by.attacker") }).first();
+const attackerCard = page.locator(".approval", { hasText: "look-alike" }).first();
+await attackerCard.scrollIntoViewIfNeeded();
 await attackerCard.locator("[data-reject]").click();
 await page.waitForSelector("#reject-reason");
 await page.fill("#reject-reason", "Called Dana Reyes at the number on file. Northwind did not request this change.");
-await sleep(800);
+await sleep(900);
 await page.click("#dialog-submit");
 await sleep(1500);
-// record the verified callback for the genuine request
 await page.locator(".approval [data-approve]").first().click();
 await page.waitForSelector("#callback-confirmed");
-await sleep(600);
+await sleep(700);
 await page.check("#callback-confirmed");
-await sleep(600);
+await sleep(700);
 await page.click("#dialog-submit");
 await sleep(1800);
-const q = await page.$("#queue-dialog[open]");
-if (q) await page.click("[data-close-queue]");
 await holdUntil(t, "bankchange", 1.0);
 
 // ---- 5 pay
@@ -155,9 +150,12 @@ await holdUntil(t, "pay", 1.5);
 
 // ---- 6 close
 t = await startSegment("close");
-await page.click('[data-view="register"]');
-await sleep(9000);
-await page.click('[data-view="investigation"]');
+await page.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+await sleep(6000);
+const payees = page.locator("#vendors");
+await payees.scrollIntoViewIfNeeded();
+await sleep(8000);
+await page.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
 await holdUntil(t, "close", 1.5);
 
 const total = now();

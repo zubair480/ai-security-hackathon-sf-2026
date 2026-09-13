@@ -91,9 +91,7 @@ The same sequence runs headless with `npm run demo`, which prints each step and 
 
 ### Dashboard
 
-The console is a responsive single page in `web/`. The runbook is on the left; keys 1–4 select and Enter runs a local scenario when focus is outside another control. Payment totals sit above searchable activity with All / Blocked / Held / Executed filters. Each case leads with a decision summary and has keyboard-accessible evidence disclosures and a JSON export. The right column contains the verification queue, trusted payee records, and invoice/payment tabs. On phones, the runbook becomes a compact four-step row and the content stacks.
-
-"Review callback" displays the existing verification record and requires an explicit callback attestation. It records the operator's statement; it does not place or verify a call. Rejection requires a nonblank reason. The header environment button opens the sandbox policy on every screen size. Light/dark theme preference is saved locally, and reduced-motion settings are respected. The dashboard stream and mail connection are tracked separately. See `docs/UI-NOTES.md` for the redesign and its verification results; `docs/UI-BRIEF.md` is the original design reference.
+The console is a single page in `web/` (vanilla HTML/CSS/JS, no build step). The left rail is the demo runbook: keys 1-4 select a scenario, Enter runs it locally, and "Send live email" sends it through AgentMail when the listener is connected. The header tiles show blocked payment value, paid-to-verified-accounts, and bank changes awaiting verification. The center column is the payment activity list; each case expands into a decision summary and a trace of the inbound email, the agent's generated Python, the sandbox output with any denied capabilities, the proposals, and every ledger check. The right column holds the verification queue (record a callback or reject with a reason) and the trusted payee register with invoices and payments. Reset demo clears the session after a confirmation.
 
 ## Sponsor tools
 
