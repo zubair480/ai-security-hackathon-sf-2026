@@ -93,6 +93,10 @@ The same sequence runs headless with `npm run demo`, which prints each step and 
 
 The console is a single page in `web/` (vanilla HTML/CSS/JS, no build step). The left rail is the demo runbook: keys 1-4 select a scenario, Enter runs it locally, and "Send live email" sends it through AgentMail when the listener is connected. The header tiles show blocked payment value, paid-to-verified-accounts, and bank changes awaiting verification. The center column is the payment activity list; each case expands into a decision summary and a trace of the inbound email, the agent's generated Python, the sandbox output with any denied capabilities, the proposals, and every ledger check. The right column holds the verification queue (record a callback or reject with a reason) and the trusted payee register with invoices and payments. Reset demo clears the session after a confirmation.
 
+### Sandbox-off comparison
+
+The "Payment diversion" step has a third button, **Run without sandbox**. It runs the identical attacker email and agent code with the Wasmer boundary removed: `network: { mode: "host" }` and the approved-payee file mounted as `data/vendors.json`. The demo server hosts the attacker's collection endpoint at `/attacker/*`, so the script's upload actually lands and the case shows "Data left the machine" with the byte count received. The ledger still blocks the payment, which is the point: the two boundaries are independent. `ATTACKER_BASE` overrides the endpoint URL baked into the email.
+
 ## Sponsor tools
 
 **Wasmer SDK** (`@wasmer/sdk` 0.13, `@wasmer/sdk/node`), in `src/sandbox.js`:

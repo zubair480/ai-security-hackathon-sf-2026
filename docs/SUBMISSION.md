@@ -76,3 +76,7 @@ To re-record with a human voice: replace the six wav files in `.state/video/` (k
 ## Live URL
 
 The console is reachable through a Cloudflare quick tunnel while the demo machine is running (`npm run serve` + `npm run tunnel`). The URL is printed by the tunnel script and written to `.state/tunnel-url.txt`; paste the current one into the submission. A permanent Cloudflare Containers deployment is configured in the repo but requires the Workers Paid plan.
+
+## Wasmer evidence during the live demo
+
+Run "Payment diversion" twice: once normally (sandbox on: `DENIED net.connect`, `DENIED fs.read`, payment blocked) and once with "Run without sandbox" (network open, payee file mounted: the case turns red with "Data left the machine · 566 bytes uploaded to /attacker/upload", payment still blocked by the ledger). Same email, same code, one variable.
