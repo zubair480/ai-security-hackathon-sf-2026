@@ -72,3 +72,7 @@ Limits: fixtures are synthetic, the inboxes are agentmail.to addresses rather th
 `npm run record -- --local` produced `payeelock-demo.mp4` (1920x1080, 2:15) from a scripted Playwright run of the console with Windows text-to-speech narration from `scripts/narration.ps1` and on-screen captions. The recorded cut uses "Run locally" for each scenario; live AgentMail delivery took about 45 seconds per email on the day, which pushed a live cut past three minutes. The live path is identical apart from the email round trip and is what the in-person demo uses.
 
 To re-record with a human voice: replace the six wav files in `.state/video/` (keep the ids), then run `npm run record -- --local`.
+
+## Live URL
+
+The console is reachable through a Cloudflare quick tunnel while the demo machine is running (`npm run serve` + `npm run tunnel`). The URL is printed by the tunnel script and written to `.state/tunnel-url.txt`; paste the current one into the submission. A permanent Cloudflare Containers deployment is configured in the repo but requires the Workers Paid plan.

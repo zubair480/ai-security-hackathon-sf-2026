@@ -149,3 +149,18 @@ docs/UI-BRIEF.md      Dashboard design spec
 ```
 
 License: MIT.
+
+## Deployment
+
+Two paths, both through Cloudflare.
+
+**Public URL now (free plan):** `npm run tunnel` starts a Cloudflare quick tunnel in front of the local server and prints an `https://<random>.trycloudflare.com` URL. Everything (AgentMail listener, Wasmer sandbox, ledger, console) keeps running on the machine that runs `npm run serve`; the tunnel only publishes it. The URL changes every launch and dies with the process.
+
+**Cloudflare Containers (Workers Paid plan):** `wrangler.jsonc`, `Dockerfile` and `cloudflare/worker.js` package the unchanged Express server as a single container instance behind a Worker. Deploy with `npm run deploy` once Docker is running, then set secrets:
+
+```bash
+npx wrangler secret put AGENTMAIL_API_KEY
+npx wrangler secret put RESTART_KEY
+```
+
+Hit `https://payeelock.<subdomain>.workers.dev/__restart?key=<RESTART_KEY>` after changing secrets so the container restarts with the new environment. Cloudflare rejects the image push on the free plan ("Deploying containers requires the Workers Paid plan"), so this path needs the plan upgrade first. The container's disk is ephemeral; the ledger resets when the instance sleeps, which is fine for a demo.
