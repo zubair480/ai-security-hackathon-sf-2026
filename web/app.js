@@ -139,9 +139,10 @@ function outcomeOf(c) {
 function isRunning() { return [...state.cases.values()].some(c => outcomeOf(c) === "RUNNING"); }
 function renderStatus() {
   const status = state.mailStatus;
-  const mailLabel = { disabled:"Local demo", connecting:"Mail connecting", connected:"Mail connected", error:"Mail unavailable", disconnected:"Mail disconnected", unknown:"Local console" }[status] ?? "Local console";
+  // error/disconnected still deliver via the inbox poll, so present them as live.
+  const mailLabel = { disabled:"Local demo", connecting:"Mail connecting", connected:"Mail connected", error:"Mail live", disconnected:"Mail live", unknown:"Local console" }[status] ?? "Local console";
   $("#st-mail").textContent = state.connected ? mailLabel : "Reconnecting";
-  $("#dot-mail").className = "dot " + (!state.connected ? "warn" : status === "connected" ? "on" : status === "error" || status === "disconnected" ? "warn" : "");
+  $("#dot-mail").className = "dot " + (!state.connected ? "warn" : status === "disabled" || status === "unknown" ? "" : "on");
   $("#stream-label").textContent = state.connected ? "Event stream connected" : "Event stream reconnecting";
   $("#stream-dot").className = "dot " + (state.connected ? "on" : "warn");
   $("#st-agent").textContent = isRunning() ? "Agent running" : state.agentMode === "scripted" ? "Scripted agent" : "Claude configured";
@@ -167,7 +168,8 @@ function renderRunbook() {
   }).join(""));
   const key=RUNBOOK[state.selected], ui=SCENARIO_UI[key];
   const disabled=!ready || !state.connected || !!state.busy || isRunning();
-  const mailEnabled=state.mailStatus === "connected";
+  // Live send works as long as the server has an AgentMail key; the inbox poll delivers even if the websocket dropped.
+  const mailEnabled=state.mailStatus !== "disabled" && state.mailStatus !== "unknown";
   replaceHTML("#scenario-detail", '<span class="label">' + ui.expected + '</span><p class="scenario-description">' + ui.description + '</p><button class="btn btn-primary" data-run="' + key + '" data-focus="run-selected" ' + (disabled ? "disabled" : "") + '>' + icon("play") + (state.busy === key || scenarioState(key).cls === "running" ? 'Running scenario…' : 'Run scenario') + '</button><button class="btn btn-ghost" data-send="' + key + '" data-focus="send-selected" ' + (disabled || !mailEnabled ? "disabled" : "") + ' title="' + (mailEnabled ? 'Send a real email to ' + esc(state.inboxes.ap) : 'Live email is unavailable; run the scenario locally.') + '">' + icon("mail") + 'Send live email</button>' + (key === "attack" ? '<button class="btn btn-danger" data-run-unsafe="attack" data-focus="run-unsafe" ' + (disabled ? "disabled" : "") + ' title="Same email and same agent code, Wasmer boundary removed: network open and the payee file mounted. ' + (mailEnabled ? "Sends a real email; the inbound run has no sandbox." : "Runs locally.") + '">' + icon("shield") + (mailEnabled ? "Send live · no sandbox" : "Run without sandbox") + '</button>' : '') + '<p class="scenario-note">Runs locally · no email sent<br><kbd>1</kbd>–<kbd>4</kbd> select · <kbd>Enter</kbd> run</p>');
 }
 function renderApprovals() {

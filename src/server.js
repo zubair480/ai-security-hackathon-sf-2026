@@ -44,6 +44,8 @@ function handleInbound(email, { reply = true, unsafe = false } = {}) {
   queue = queue
     .then(async () => {
       currentCaseId = email.messageId;
+      // A delivered email proves mail is live; recover the status if the websocket had errored.
+      if (mailStatus !== "connected" && mailStatus !== "disabled") updateMailStatus("connected");
       const { decisions } = await processEmail(email, { ledger, emit, unsafe }).finally(() => {
         currentCaseId = null;
       });
